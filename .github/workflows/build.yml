@@ -1,0 +1,46 @@
+# .github/workflows/build.yml
+name: Build & Release — The Hollows
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:     [ "v*.*.*" ]        # ← פוש של v1.0.0 יוצר Release עם EXE
+
+env:
+  UNITY_VERSION: "2023.2.20f1"   # ← שנה לגרסת היוניטי שלך
+  PROJECT_NAME:  "TheHollows"
+  BUILD_TARGET:  "StandaloneWindows64"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, lfs: true }
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ env.BUILD_TARGET }}-${{ hashFiles('Assets/**') }}
+
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE:  ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion:   ${{ env.UNITY_VERSION }}
+          targetPlatform: ${{ env.BUILD_TARGET }}
+          buildName:      ${{ env.PROJECT_NAME }}
+          buildsPath:     build
+
+      - name: Zip build
+        run: cd build/StandaloneWindows64 && zip -r ../../TheHollows.zip .
+
+      - name: Create Release  ← רק כשתפוש tag כמו v1.0.0
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: TheHollows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
