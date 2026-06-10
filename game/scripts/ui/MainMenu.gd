@@ -39,14 +39,12 @@ func _show_panel(panel: Control) -> void:
 
 func _on_new_game_pressed() -> void:
 	SaveSystem.delete_save()
-	FearSystem.reset()
 	_fade_and_load(0)
 
 func _on_continue_pressed() -> void:
 	if not SaveSystem.save_exists():
 		return
 	SaveSystem.load_game()
-	FearSystem.reset()
 	_fade_and_load(GameManager.current_level)
 
 func _on_settings_pressed() -> void:
