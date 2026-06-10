@@ -123,3 +123,16 @@ offset_top = 1040.0
 offset_right = 200.0
 offset_bottom = 1070.0
 text = "v1.0.0"
+
+[connection signal="pressed" from="MainPanel/BtnNewGame" to="." method="_on_new_game_pressed"]
+[connection signal="pressed" from="MainPanel/BtnContinue" to="." method="_on_continue_pressed"]
+[connection signal="pressed" from="MainPanel/BtnSettings" to="." method="_on_settings_pressed"]
+[connection signal="pressed" from="MainPanel/BtnExit" to="." method="_on_exit_pressed"]
+[connection signal="pressed" from="SettingsPanel/BtnBackSettings" to="." method="_on_back_from_settings"]
+[connection signal="pressed" from="ControlsPanel/BtnUnderstood" to="." method="_on_understood_pressed"]
+[connection signal="pressed" from="CreditsPanel/BtnBackCredits" to="." method="_on_back_from_credits"]
+[connection signal="value_changed" from="SettingsPanel/VolumeSlider" to="." method="_on_volume_changed"]
+[connection signal="value_changed" from="SettingsPanel/MusicSlider" to="." method="_on_music_changed"]
+[connection signal="value_changed" from="SettingsPanel/SensitivitySlider" to="." method="_on_sensitivity_changed"]
+[connection signal="value_changed" from="SettingsPanel/BrightnessSlider" to="." method="_on_brightness_changed"]
+[connection signal="toggled" from="SettingsPanel/FullscreenCheck" to="." method="_on_fullscreen_toggled"]
