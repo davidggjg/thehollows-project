@@ -25,9 +25,9 @@ extends CharacterBody3D
 @export var camera_pitch_max: float = 55.0
 
 @export_group("Flashlight")
-@export var battery_max:          float = 180.0
-@export var battery_drain:        float = 1.0
-@export var battery_critical:     float = 20.0
+@export var battery_max:      float = 180.0
+@export var battery_drain:    float = 1.0
+@export var battery_critical: float = 20.0
 
 var is_crouching:  bool  = false
 var is_sprinting:  bool  = false
@@ -36,18 +36,16 @@ var is_dead:       bool  = false
 var flashlight_on: bool  = false
 var battery:       float = 180.0
 var health:        float = 100.0
+var HealthPercent: float = 100.0
 
 var _camera_pitch:  float = 0.0
 var _step_timer:    float = 0.0
 var _flicker_timer: float = 0.0
-var _current_hide_spot = null
+var _current_hide_spot    = null
 
 const STEP_WALK   = 0.52
 const STEP_SPRINT = 0.30
 const STEP_CROUCH = 0.82
-
-[HideInInspector]
-var HealthPercent: float = 100.0
 
 signal health_changed(new_health: float)
 signal hiding_changed(hiding: bool)
@@ -55,7 +53,8 @@ signal flashlight_toggled(on: bool)
 
 func _ready() -> void:
 	add_to_group("player")
-	await get_tree().process_frame
+	# Hide then capture — fixes Windows cursor flash bug
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if flashlight:
 		flashlight.visible = false
@@ -81,9 +80,11 @@ func _physics_process(delta: float) -> void:
 	_handle_movement(delta)
 	_handle_flashlight(delta)
 	_handle_footsteps(delta)
-	_handle_fear_visuals()
 	_update_camera_smoothly(delta)
 	move_and_slide()
+
+func _process(_delta: float) -> void:
+	_handle_fear_visuals()
 
 func _rotate_camera(mouse_delta: Vector2) -> void:
 	rotate_y(-mouse_delta.x * mouse_sensitivity * 0.01)
@@ -209,23 +210,15 @@ func take_damage(amount: float) -> void:
 		is_dead = true
 		GameManager.player_died()
 
-func get_health() -> float:
-	return health
-
-func get_battery() -> float:
-	return battery / battery_max
-
-func is_flashlight_on() -> bool:
-	return flashlight_on
-
-func is_crouching_now() -> bool:
-	return is_crouching
-
-func is_sprinting_now() -> bool:
-	return is_sprinting
+func get_health() -> float:      return health
+func get_battery() -> float:     return battery / battery_max
+func is_flashlight_on() -> bool: return flashlight_on
+func is_crouching_now() -> bool: return is_crouching
+func is_sprinting_now() -> bool: return is_sprinting
 
 func release_mouse() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func capture_mouse() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
