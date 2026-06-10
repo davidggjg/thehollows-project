@@ -1,106 +1,128 @@
-extends Control
+extends CanvasLayer
 
-@onready var main_panel:     Control   = $MainPanel
-@onready var settings_panel: Control   = $SettingsPanel
-@onready var controls_panel: Control   = $ControlsPanel
-@onready var credits_panel:  Control   = $CreditsPanel
-@onready var title_label:    Label     = $TitleLabel
-@onready var subtitle_label: Label     = $SubtitleLabel
-@onready var version_label:  Label     = $VersionLabel
-@onready var fade_rect:      ColorRect = $FadeRect
-@onready var volume_slider:      HSlider  = $SettingsPanel/VolumeSlider
-@onready var music_slider:       HSlider  = $SettingsPanel/MusicSlider
-@onready var sensitivity_slider: HSlider  = $SettingsPanel/SensitivitySlider
-@onready var brightness_slider:  HSlider  = $SettingsPanel/BrightnessSlider
-@onready var fullscreen_check:   CheckBox = $SettingsPanel/FullscreenCheck
+@onready var vignette:        ColorRect   = $Vignette
+@onready var fear_overlay:    ColorRect   = $FearOverlay
+@onready var crossfade_black: ColorRect   = $CrossfadeBlack
+@onready var health_bar:      ProgressBar = $HealthBar
+@onready var flashlight_bar:  ProgressBar = $FlashlightBar
+@onready var interact_prompt: Label       = $InteractPrompt
+@onready var objective_label: Label       = $ObjectiveLabel
+@onready var note_panel:      Panel       = $NotePanel
+@onready var note_title:      Label       = $NotePanel/Title
+@onready var note_body:       Label       = $NotePanel/Body
+@onready var inventory_panel: Panel       = $InventoryPanel
+@onready var level_label:     Label       = $LevelLabel
+
+var _player: Node = null
 
 func _ready() -> void:
-	version_label.text = "v1.0.0"
-	var settings = SaveSystem.load_settings()
-	if settings.is_empty():
-		settings = SaveSystem.default_settings()
-	_apply_settings(settings)
-	var shown = ProjectSettings.get_setting("application/first_launch_shown", false)
-	_show_panel(controls_panel if not shown else main_panel)
-	fade_rect.modulate.a = 1.0
-	var t = create_tween()
-	t.tween_property(fade_rect, "modulate:a", 0.0, 1.5)
-	title_label.modulate.a    = 0.0
-	subtitle_label.modulate.a = 0.0
-	await get_tree().create_timer(0.5).timeout
-	create_tween().tween_property(title_label,    "modulate:a", 1.0, 1.0)
-	await get_tree().create_timer(0.8).timeout
-	create_tween().tween_property(subtitle_label, "modulate:a", 1.0, 1.5)
+	add_to_group("hud")
+	note_panel.visible      = false
+	inventory_panel.visible = false
+	interact_prompt.visible = false
+	# Start fully black then fade to transparent
+	crossfade_black.color = Color(0, 0, 0, 1)
+	crossfade_black.visible = true
+	FearSystem.fear_changed.connect(_on_fear_changed)
+	FearSystem.sanity_event.connect(_on_sanity_event)
+	level_label.text = GameManager.get_level_name()
+	fade_in(1.5)
 
-func _show_panel(panel: Control) -> void:
-	for p in [main_panel, settings_panel, controls_panel, credits_panel]:
-		if p: p.visible = false
-	panel.visible = true
-
-func _on_new_game_pressed() -> void:
-	SaveSystem.delete_save()
-	FearSystem.reset()
-	_fade_and_load(0)
-
-func _on_continue_pressed() -> void:
-	if not SaveSystem.save_exists():
+func _process(_delta: float) -> void:
+	if not _player:
+		_player = get_tree().get_first_node_in_group("player")
 		return
-	SaveSystem.load_game()
-	FearSystem.reset()
-	_fade_and_load(GameManager.current_level)
+	if _player.has_method("get_health"):
+		health_bar.value = _player.get_health()
+	if _player.has_method("get_battery") and _player.has_method("is_flashlight_on"):
+		flashlight_bar.visible = _player.is_flashlight_on()
+		flashlight_bar.value   = _player.get_battery() * 100.0
+	if Input.is_action_just_pressed("inventory"):
+		_toggle_inventory()
+	if Input.is_action_just_pressed("pause"):
+		_toggle_pause()
 
-func _on_settings_pressed() -> void:
-	_show_panel(settings_panel)
+func _on_fear_changed(level: float) -> void:
+	vignette.color.a    = smoothstep(0.0, 1.0, level) * 0.85
+	fear_overlay.color.a = smoothstep(0.6, 1.0, level) * 0.25
 
-func _on_exit_pressed() -> void:
+func _on_sanity_event(event_type: String) -> void:
+	if event_type == "shadow_figure":
+		_flash_shadow()
+
+func _flash_shadow() -> void:
+	var rect = ColorRect.new()
+	rect.color    = Color(0, 0, 0, 0.6)
+	rect.size     = Vector2(60, 180)
+	rect.position = Vector2(randf_range(50, 1800), randf_range(100, 700))
+	add_child(rect)
 	var t = create_tween()
-	t.tween_property(fade_rect, "modulate:a", 1.0, 0.8)
+	t.tween_property(rect, "color:a", 0.0, 0.6)
 	await t.finished
-	get_tree().quit()
+	rect.queue_free()
 
-func _on_volume_changed(value: float) -> void:
-	AudioManager.set_master_volume(value)
-
-func _on_music_changed(value: float) -> void:
-	AudioManager.set_music_volume(value)
-
-func _on_sensitivity_changed(_value: float) -> void:
-	pass
-
-func _on_brightness_changed(value: float) -> void:
-	RenderingServer.global_shader_parameter_set("brightness_mult", value)
-
-func _on_fullscreen_toggled(on: bool) -> void:
-	DisplayServer.window_set_mode(
-		DisplayServer.WINDOW_MODE_FULLSCREEN if on
-		else DisplayServer.WINDOW_MODE_WINDOWED)
-
-func _on_back_from_settings() -> void:
-	SaveSystem.save_settings({
-		"master_volume":     volume_slider.value,
-		"music_volume":      music_slider.value,
-		"mouse_sensitivity": sensitivity_slider.value,
-		"brightness":        brightness_slider.value,
-		"fullscreen":        fullscreen_check.button_pressed,
-	})
-	_show_panel(main_panel)
-
-func _apply_settings(s: Dictionary) -> void:
-	if volume_slider:      volume_slider.value              = s.get("master_volume",     0.8)
-	if music_slider:       music_slider.value               = s.get("music_volume",      0.6)
-	if sensitivity_slider: sensitivity_slider.value         = s.get("mouse_sensitivity", 0.3)
-	if brightness_slider:  brightness_slider.value          = s.get("brightness",        1.0)
-	if fullscreen_check:   fullscreen_check.button_pressed  = s.get("fullscreen",        true)
-
-func _on_understood_pressed() -> void:
-	ProjectSettings.set_setting("application/first_launch_shown", true)
-	_show_panel(main_panel)
-
-func _on_back_from_credits() -> void:
-	_show_panel(main_panel)
-
-func _fade_and_load(level_index: int) -> void:
+func show_note(title: String, body: String) -> void:
+	note_title.text = title
+	note_body.text  = body
+	note_panel.visible = true
+	note_panel.modulate.a = 0.0
 	var t = create_tween()
-	t.tween_property(fade_rect, "modulate:a", 1.0, 1.0)
+	t.tween_property(note_panel, "modulate:a", 1.0, 0.4)
+	if _player and _player.has_method("release_mouse"):
+		_player.release_mouse()
+	GameManager.set_state(GameManager.GameState.CUTSCENE)
+
+func close_note() -> void:
+	var t = create_tween()
+	t.tween_property(note_panel, "modulate:a", 0.0, 0.3)
 	await t.finished
-	GameManager.load_level(level_index)
+	note_panel.visible = false
+	GameManager.set_state(GameManager.GameState.PLAYING)
+	if _player and _player.has_method("capture_mouse"):
+		_player.capture_mouse()
+
+func _input(event: InputEvent) -> void:
+	if note_panel.visible and event.is_action_pressed("interact"):
+		close_note()
+
+func _toggle_inventory() -> void:
+	inventory_panel.visible = not inventory_panel.visible
+	if inventory_panel.visible:
+		if _player: _player.release_mouse()
+		GameManager.set_state(GameManager.GameState.PAUSED)
+	else:
+		if _player: _player.capture_mouse()
+		GameManager.set_state(GameManager.GameState.PLAYING)
+
+func _toggle_pause() -> void:
+	if note_panel.visible:
+		return
+	if GameManager.current_state == GameManager.GameState.PAUSED:
+		GameManager.set_state(GameManager.GameState.PLAYING)
+		if _player: _player.capture_mouse()
+	else:
+		GameManager.set_state(GameManager.GameState.PAUSED)
+		if _player: _player.release_mouse()
+
+func fade_in(duration: float = 1.0) -> void:
+	crossfade_black.visible = true
+	crossfade_black.color   = Color(0, 0, 0, 1)
+	var t = create_tween()
+	t.tween_property(crossfade_black, "color:a", 0.0, duration)
+	await t.finished
+	crossfade_black.visible = false
+
+func fade_out(duration: float = 1.0) -> void:
+	crossfade_black.visible = true
+	crossfade_black.color   = Color(0, 0, 0, 0)
+	var t = create_tween()
+	t.tween_property(crossfade_black, "color:a", 1.0, duration)
+
+func set_objective(text: String) -> void:
+	objective_label.text       = "▶ " + text
+	objective_label.modulate.a = 0.0
+	var t = create_tween()
+	t.tween_property(objective_label, "modulate:a", 1.0, 0.5)
+	await get_tree().create_timer(5.0).timeout
+	t = create_tween()
+	t.tween_property(objective_label, "modulate:a", 0.0, 1.0)
