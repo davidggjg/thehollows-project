@@ -16,7 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0, lfs: true }
+        with:
+          fetch-depth: 0
+          lfs: true
 
       - name: Cache Godot
         uses: actions/cache@v4
@@ -27,36 +29,189 @@ jobs:
             /usr/local/bin/godot
           key: godot-${{ env.GODOT_VERSION }}
 
-      - name: Install Godot
+      - name: Install Godot + Templates
         if: steps.cache-godot.outputs.cache-hit != 'true'
         run: |
-          wget -q "https://github.com/godotengine/godot-builds/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64.zip" -O godot.zip
+          BASE="https://github.com/godotengine/godot-builds/releases/download/4.6.1-stable"
+          wget -q "$BASE/Godot_v4.6.1-stable_linux.x86_64.zip" -O godot.zip
           unzip -q godot.zip
-          mv Godot_v${{ env.GODOT_VERSION }}_linux.x86_64 /usr/local/bin/godot
+          mv Godot_v4.6.1-stable_linux.x86_64 /usr/local/bin/godot
           chmod +x /usr/local/bin/godot
-          wget -q "https://github.com/godotengine/godot-builds/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz" -O templates.tpz
-          mkdir -p ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}/
-          unzip -q templates.tpz && mv templates/* ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}/
 
-      - name: Import + Export
+          wget -q "$BASE/Godot_v4.6.1-stable_export_templates.tpz" -O templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.6.1.stable/
+          unzip -q templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.6.1.stable/
+          echo "Godot + templates installed ✓"
+
+      - name: Create dummy MainMenu scene
+        run: |
+          mkdir -p ${{ env.PROJECT_PATH }}/scenes/main_menu
+          cat > ${{ env.PROJECT_PATH }}/scenes/main_menu/MainMenu.tscn << 'TSCN'
+[gd_scene load_steps=2 format=3 uid="uid://main_menu"]
+
+[ext_resource type="Script" path="res://scripts/ui/MainMenu.gd" id="1"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+script = ExtResource("1")
+
+[node name="FadeRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+color = Color(0, 0, 0, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 660.0
+offset_top = 200.0
+offset_right = 1260.0
+offset_bottom = 320.0
+text = "THE HOLLOWS"
+
+[node name="SubtitleLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 700.0
+offset_top = 330.0
+offset_right = 1220.0
+offset_bottom = 370.0
+text = "You were never meant to leave."
+
+[node name="MainPanel" type="VBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 760.0
+offset_top = 420.0
+offset_right = 1160.0
+offset_bottom = 700.0
+
+[node name="BtnNewGame" type="Button" parent="MainPanel"]
+layout_mode = 2
+text = "NEW GAME"
+
+[node name="BtnContinue" type="Button" parent="MainPanel"]
+layout_mode = 2
+text = "CONTINUE"
+
+[node name="BtnSettings" type="Button" parent="MainPanel"]
+layout_mode = 2
+text = "SETTINGS"
+
+[node name="BtnExit" type="Button" parent="MainPanel"]
+layout_mode = 2
+text = "EXIT"
+
+[node name="SettingsPanel" type="VBoxContainer" parent="."]
+layout_mode = 1
+visible = false
+offset_left = 660.0
+offset_top = 300.0
+offset_right = 1260.0
+offset_bottom = 780.0
+
+[node name="VolumeSlider" type="HSlider" parent="SettingsPanel"]
+layout_mode = 2
+min_value = 0.0
+max_value = 1.0
+value = 0.8
+
+[node name="MusicSlider" type="HSlider" parent="SettingsPanel"]
+layout_mode = 2
+min_value = 0.0
+max_value = 1.0
+value = 0.6
+
+[node name="SensitivitySlider" type="HSlider" parent="SettingsPanel"]
+layout_mode = 2
+min_value = 0.1
+max_value = 5.0
+value = 0.3
+
+[node name="BrightnessSlider" type="HSlider" parent="SettingsPanel"]
+layout_mode = 2
+min_value = 0.1
+max_value = 2.0
+value = 1.0
+
+[node name="FullscreenCheck" type="CheckBox" parent="SettingsPanel"]
+layout_mode = 2
+text = "Fullscreen"
+button_pressed = true
+
+[node name="BtnBackSettings" type="Button" parent="SettingsPanel"]
+layout_mode = 2
+text = "BACK"
+
+[node name="ControlsPanel" type="VBoxContainer" parent="."]
+layout_mode = 1
+visible = false
+offset_left = 610.0
+offset_top = 200.0
+offset_right = 1310.0
+offset_bottom = 800.0
+
+[node name="BtnUnderstood" type="Button" parent="ControlsPanel"]
+layout_mode = 2
+text = "UNDERSTOOD"
+
+[node name="CreditsPanel" type="VBoxContainer" parent="."]
+layout_mode = 1
+visible = false
+offset_left = 660.0
+offset_top = 300.0
+offset_right = 1260.0
+offset_bottom = 700.0
+
+[node name="BtnBackCredits" type="Button" parent="CreditsPanel"]
+layout_mode = 2
+text = "BACK"
+
+[node name="VersionLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 20.0
+offset_top = 1040.0
+offset_right = 200.0
+offset_bottom = 1070.0
+text = "v1.0.0"
+TSCN
+          echo "MainMenu.tscn created ✓"
+
+      - name: Import project
+        run: |
+          cd ${{ env.PROJECT_PATH }}
+          godot --headless --import 2>&1 | tail -5 || true
+
+      - name: Export Windows EXE
         run: |
           mkdir -p ${{ env.PROJECT_PATH }}/build
           cd ${{ env.PROJECT_PATH }}
-          godot --headless --import || true
           godot --headless --export-release "Windows Desktop" build/${{ env.EXPORT_NAME }}.exe
 
-      - name: Zip + Release
-        run: cd ${{ env.PROJECT_PATH }}/build && zip -r ../../${{ env.EXPORT_NAME }}-Windows.zip .
+      - name: Zip build
+        run: |
+          cd ${{ env.PROJECT_PATH }}/build
+          zip -r ../../${{ env.EXPORT_NAME }}-Windows-x64.zip .
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.EXPORT_NAME }}-Windows
-          path: ${{ env.EXPORT_NAME }}-Windows.zip
+          name: ${{ env.EXPORT_NAME }}-Windows-x64
+          path: ${{ env.EXPORT_NAME }}-Windows-x64.zip
+          retention-days: 14
 
-      - name: GitHub Release  # רק על tag כמו v1.0.0
+      - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.EXPORT_NAME }}-Windows.zip
+          name: "The Hollows — ${{ github.ref_name }}"
+          body: |
+            ## 🕯️ The Hollows — ${{ github.ref_name }}
+            > *You were never meant to leave.*
+
+            ### התקנה
+            1. הורד את הZIP
+            2. חלץ לכל תיקייה
+            3. הרץ `TheHollows.exe`
+          files: ${{ env.EXPORT_NAME }}-Windows-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
