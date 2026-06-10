@@ -64,6 +64,7 @@ signal hiding_changed(hiding: bool)
 signal flashlight_toggled(on: bool)
 
 func _ready() -> void:
+	add_to_group("player")
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	spring_arm.spring_length = camera_distance_normal
 	camera_pivot.position.y  = camera_height_normal

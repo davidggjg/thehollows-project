@@ -27,6 +27,7 @@ var _show_inventory: bool = false
 
 func _ready() -> void:
 	add_to_group("hud")
+	add_to_group("hud")
 	note_panel.visible  = false
 	inventory_panel.visible = false
 	interact_prompt.visible = false
