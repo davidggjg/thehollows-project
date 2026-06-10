@@ -127,18 +127,6 @@ anchors_preset = 15
 color = Color(0.5, 0, 0, 0)
 mouse_filter = 2
 
-[node name="AberrationRect" type="ColorRect" parent="HUD"]
-layout_mode = 1
-anchors_preset = 15
-color = Color(1, 1, 1, 0)
-mouse_filter = 2
-
-[node name="SanityBlur" type="ColorRect" parent="HUD"]
-layout_mode = 1
-anchors_preset = 15
-color = Color(1, 1, 1, 0)
-mouse_filter = 2
-
 [node name="CrossfadeBlack" type="ColorRect" parent="HUD"]
 layout_mode = 1
 anchors_preset = 15
